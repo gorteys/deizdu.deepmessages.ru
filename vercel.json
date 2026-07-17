@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/chat", "destination": "/public/chat.html" },
+    { "source": "/createchat", "destination": "/public/createchat.html" },
+    { "source": "/ai/deepseek/", "destination": "https://chat.deepseek.com" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
+  ]
+}

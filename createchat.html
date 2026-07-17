@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать чат — DeepMessages</title>
+    <style>
+        body { margin:0; background:#0b0d11; color:#e0e0e0; display:flex; justify-content:center; align-items:center; height:100vh; font-family:'Segoe UI',sans-serif; }
+        .box { background:#15181f; padding:40px; border-radius:20px; text-align:center; width:350px; }
+        h1 { color:#4fc3f7; }
+        input { width:100%; padding:12px; margin:10px 0; border-radius:10px; border:none; background:#1e222a; color:#fff; }
+        button { width:100%; padding:12px; background:#4fc3f7; border:none; border-radius:10px; font-weight:bold; cursor:pointer; }
+        a { color:#81c784; text-decoration:none; margin-top:15px; display:block; }
+        #status { margin-top:10px; font-size:14px; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Создать чат</h1>
+        <p>Введите название новой группы:</p>
+        <input type="text" id="group-name" placeholder="Моя группа">
+        <button onclick="createChat()">Создать</button>
+        <a href="/chat">← Вернуться к чатам</a>
+        <div id="status"></div>
+    </div>
+    <script>
+        const API_URL = '/api';
+        const user = localStorage.getItem('deepMessages_user');
+        if (!user) window.location.href = '/';
+
+        async function createChat() {
+            const name = document.getElementById('group-name').value.trim();
+            if (!name) { alert('Введите название!'); return; }
+            document.getElementById('status').textContent = 'Создание...';
+            try {
+                const res = await fetch(`${API_URL}/groups`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                await res.json();
+                document.getElementById('status').textContent = '✅ Чат создан!';
+                setTimeout(() => window.location.href = '/chat', 1000);
+            } catch(e) {
+                document.getElementById('status').textContent = 'Ошибка!';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "deepmessages-vercel",
+  "version": "1.0.0",
+  "description": "DeepMessages on Vercel",
+  "scripts": {
+    "vercel-build": "echo Hello"
+  },
+  "dependencies": {
+    "fs": "0.0.1-security"
+  }
+}

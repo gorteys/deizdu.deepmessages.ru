@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepMessages — Чат</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { margin:0; background:#0b0d11; color:#e0e0e0; display:flex; height:100vh; }
+        #app { display:flex; width:100%; height:100vh; }
+        #sidebar { width:260px; background:#15181f; padding:20px; border-right:1px solid #2a2d35; display:flex; flex-direction:column; }
+        #sidebar h2 { color:#4fc3f7; margin-top:0; }
+        .group-item { padding:12px; background:#1e222a; margin-bottom:8px; border-radius:8px; cursor:pointer; }
+        .group-item.active { background:#2a2f3a; border-left:3px solid #4fc3f7; }
+        #chat-area { flex:1; display:flex; flex-direction:column; padding:20px; background:#0f1217; }
+        #chat-header { font-size:22px; font-weight:600; margin-bottom:10px; }
+        #messages { flex:1; overflow-y:auto; border:1px solid #22262e; border-radius:12px; padding:15px; background:#13171f; }
+        .msg { margin-bottom:12px; padding:10px 14px; border-radius:12px; max-width:70%; }
+        .msg.me { background:#1e88e5; align-self:flex-end; margin-left:auto; }
+        .msg.other { background:#262b36; }
+        .msg .time { font-size:10px; opacity:0.6; margin-top:4px; display:block; }
+        .msg .file-link { color:#4fc3f7; text-decoration:underline; cursor:pointer; display:block; margin-top:5px; }
+        .msg img { max-width:200px; border-radius:8px; margin-top:5px; }
+        .msg .sender { font-weight:bold; color:#4fc3f7; font-size:12px; margin-bottom:2px; display:block; }
+        #input-area { display:flex; gap:10px; margin-top:15px; align-items:center; }
+        #message-input { flex:1; padding:12px; border-radius:20px; border:none; background:#1e222a; color:#fff; outline:none; }
+        #file-input { display:none; }
+        #file-label { background:#2a2f3a; padding:10px 15px; border-radius:20px; cursor:pointer; }
+        #send-btn { padding:10px 25px; background:#4fc3f7; color:#0b0d11; border:none; border-radius:20px; cursor:pointer; font-weight:bold; }
+        #logout-btn { margin-top:20px; background:#c62828; color:white; border:none; padding:8px; border-radius:6px; cursor:pointer; }
+        #create-link { margin-top:10px; color:#81c784; text-decoration:none; display:block; text-align:center; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="sidebar">
+            <h2>Группы</h2>
+            <div id="user-display" style="color:#81c784; margin-bottom:15px;">Вы: <span id="current-user"></span></div>
+            <div id="groups-list"></div>
+            <a href="/createchat" id="create-link">+ Создать группу</a>
+            <button id="logout-btn" onclick="logout()">Выйти</button>
+        </div>
+        <div id="chat-area">
+            <div id="chat-header">Выберите группу</div>
+            <div id="messages"></div>
+            <div id="input-area">
+                <input type="text" id="message-input" placeholder="Сообщение...">
+                <label id="file-label" for="file-input">📎 Файл</label>
+                <input type="file" id="file-input" onchange="handleFile()">
+                <button id="send-btn" onclick="sendMessage()">Отправить</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API_URL = '/api';
+        let currentUser = localStorage.getItem('deepMessages_user');
+        if (!currentUser) window.location.href = '/';
+        document.getElementById('current-user').textContent = currentUser;
+        let groups = [], currentGroupId = null, interval = null;
+
+        async function loadGroups() {
+            const res = await fetch(`${API_URL}/groups`);
+            groups = await res.json();
+            const container = document.getElementById('groups-list');
+            container.innerHTML = '';
+            groups.forEach(g => {
+                const div = document.createElement('div');
+                div.className = 'group-item' + (currentGroupId === g.id ? ' active' : '');
+                div.textContent = g.name;
+                div.onclick = () => selectGroup(g.id);
+                container.appendChild(div);
+            });
+        }
+
+        async function selectGroup(id) {
+            currentGroupId = id;
+            const group = groups.find(g => g.id === id);
+            document.getElementById('chat-header').textContent = group.name;
+            loadGroups();
+            await loadMessages();
+            if (interval) clearInterval(interval);
+            interval = setInterval(loadMessages, 2000);
+        }
+
+        async function loadMessages() {
+            if (!currentGroupId) return;
+            const res = await fetch(`${API_URL}/groups/${currentGroupId}/messages`);
+            const msgs = await res.json();
+            const container = document.getElementById('messages');
+            container.innerHTML = '';
+            msgs.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = 'msg ' + (msg.sender === currentUser ? 'me' : 'other');
+                let content = '';
+                if (msg.sender !== currentUser) content += `<span class="sender">${msg.sender}</span>`;
+                content += msg.text || '';
+                if (msg.file) {
+                    if (msg.file.type.startsWith('image/')) {
+                        content += `<br><img src="${msg.file.data}" alt="${msg.file.name}">`;
+                    } else {
+                        content += `<br><a class="file-link" href="${msg.file.data}" download="${msg.file.name}">⬇ Скачать ${msg.file.name}</a>`;
+                    }
+                }
+                content += `<span class="time">${msg.time || ''}</span>`;
+                div.innerHTML = content;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            if (!currentGroupId) { alert('Выберите группу!'); return; }
+            const text = document.getElementById('message-input').value.trim();
+            if (!text) return;
+            await fetch(`${API_URL}/groups/${currentGroupId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sender: currentUser, text })
+            });
+            document.getElementById('message-input').value = '';
+            await loadMessages();
+        }
+
+        async function handleFile() {
+            const input = document.getElementById('file-input');
+            const file = input.files[0];
+            if (!file || !currentGroupId) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                await fetch(`${API_URL}/groups/${currentGroupId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sender: currentUser,
+                        text: '📎 Файл',
+                        file: { name: file.name, data: e.target.result, type: file.type }
+                    })
+                });
+                input.value = '';
+                await loadMessages();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function logout() {
+            localStorage.removeItem('deepMessages_user');
+            if (interval) clearInterval(interval);
+            window.location.href = '/';
+        }
+
+        document.getElementById('message-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        loadGroups();
+    </script>
+</body>
+</html>

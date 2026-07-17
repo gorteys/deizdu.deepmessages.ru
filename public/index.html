@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepMessages — Вход</title>
+    <style>
+        body { margin:0; background:#0b0d11; color:#e0e0e0; display:flex; justify-content:center; align-items:center; height:100vh; font-family:'Segoe UI',sans-serif; }
+        .login-box { background:#15181f; padding:40px; border-radius:20px; text-align:center; width:320px; }
+        h1 { color:#4fc3f7; }
+        input { width:100%; padding:12px; margin:10px 0; border-radius:10px; border:none; background:#1e222a; color:#fff; }
+        button { width:100%; padding:12px; background:#4fc3f7; border:none; border-radius:10px; font-weight:bold; cursor:pointer; }
+        #status { margin-top:10px; font-size:14px; }
+        .footer { margin-top:20px; font-size:12px; color:#888; }
+        .footer a { color:#4fc3f7; text-decoration:none; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>DeepMessages</h1>
+        <p>Введите ваше имя (не настоящее!)</p>
+        <input type="text" id="username" placeholder="Например: Кот123">
+        <button onclick="login()">Войти в чат</button>
+        <div id="status"></div>
+        <div class="footer">
+            <a href="/ai/deepseek/">🤖 AI DeepSeek</a>
+        </div>
+    </div>
+    <script>
+        const API_URL = '/api';
+        async function login() {
+            const name = document.getElementById('username').value.trim();
+            if (!name) { alert('Введите имя!'); return; }
+            document.getElementById('status').textContent = 'Вход...';
+            try {
+                const res = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('deepMessages_user', name);
+                    window.location.href = '/chat';
+                } else {
+                    document.getElementById('status').textContent = 'Ошибка: ' + data.error;
+                }
+            } catch(e) {
+                document.getElementById('status').textContent = 'Ошибка соединения!';
+            }
+        }
+        if (localStorage.getItem('deepMessages_user')) {
+            window.location.href = '/chat';
+        }
+    </script>
+</body>
+</html>
